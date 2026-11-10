@@ -7,6 +7,7 @@ import type { Application } from '@/lib/types/database.types'
 import { JobDescription } from './JobDescription'
 import { CompanyInfo } from './CompanyInfo'
 import { Documents } from './Documents'
+import { ContactsTab } from './ContactsTab'
 
 interface MainPanelProps {
   application: Application
@@ -19,10 +20,12 @@ export function MainPanel({ application, activeTab, className }: MainPanelProps)
     switch (activeTab) {
       case 'overview':
         return <JobDescription application={application} />
+      case 'contacts':
+        return <ContactsTab application={application} />
+      case 'documents':
+        return <Documents application={application} />
       case 'company':
         return <CompanyInfo application={application} />
-      case 'documents':
-        return <Documents _application={application} />
       default:
         return <JobDescription application={application} />
     }

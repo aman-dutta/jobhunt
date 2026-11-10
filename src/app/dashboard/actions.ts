@@ -13,6 +13,20 @@ import {
   reorderApplicationsInColumn,
   updateApplicationPosition,
 } from '@/lib/api/applications'
+import {
+  getContactsByApplication,
+  createContact,
+  updateContact,
+  deleteContact,
+  getDueFollowUps,
+} from '@/lib/api/contacts'
+import { getUserSettings, saveUserSettings } from '@/lib/api/settings'
+import type {
+  ApplicationContact,
+  ApplicationContactInsert,
+  ApplicationContactUpdate,
+  UserSettings,
+} from '@/lib/types/database.types'
 
 /**
  * Get all applications for the authenticated user
@@ -91,6 +105,8 @@ export async function createApplicationAction(formData: ApplicationFormData): Pr
     status: validatedData.status,
     date_applied: validatedData.date_applied,
     notes: validatedData.notes || null,
+    job_description: validatedData.job_description || null,
+    cover_letter: validatedData.cover_letter || null,
     position: newPosition,
   }
 
@@ -135,6 +151,8 @@ export async function updateApplicationAction(
     status: validatedData.status,
     date_applied: validatedData.date_applied,
     notes: validatedData.notes || null,
+    job_description: validatedData.job_description || null,
+    cover_letter: validatedData.cover_letter || null,
     updated_at: new Date().toISOString(),
   }
 
@@ -266,4 +284,76 @@ export async function updateApplicationPositionAction(
     }
     throw new Error('Failed to update application position')
   }
+}
+
+/**
+ * Get contacts for an application
+ */
+export async function getContactsAction(applicationId: string): Promise<ApplicationContact[]> {
+  const supabase = await createClient()
+  return getContactsByApplication(supabase, applicationId)
+}
+
+/**
+ * Create a new contact outreach entry
+ */
+export async function createContactAction(
+  contactData: ApplicationContactInsert
+): Promise<ApplicationContact> {
+  const supabase = await createClient()
+  const contact = await createContact(supabase, contactData)
+  revalidatePath('/dashboard')
+  return contact
+}
+
+/**
+ * Update a contact outreach entry
+ */
+export async function updateContactAction(
+  id: string,
+  updates: ApplicationContactUpdate
+): Promise<ApplicationContact> {
+  const supabase = await createClient()
+  const contact = await updateContact(supabase, id, updates)
+  revalidatePath('/dashboard')
+  return contact
+}
+
+/**
+ * Delete a contact
+ */
+export async function deleteContactAction(id: string): Promise<void> {
+  const supabase = await createClient()
+  await deleteContact(supabase, id)
+  revalidatePath('/dashboard')
+}
+
+/**
+ * Get due follow-up reminders
+ */
+export async function getDueFollowUpsAction() {
+  const supabase = await createClient()
+  return getDueFollowUps(supabase)
+}
+
+/**
+ * Get user settings (master resume and AI key)
+ */
+export async function getUserSettingsAction(): Promise<UserSettings | null> {
+  const supabase = await createClient()
+  return getUserSettings(supabase)
+}
+
+/**
+ * Save user settings
+ */
+export async function saveUserSettingsAction(settings: {
+  master_resume?: string | null
+  gemini_api_key?: string | null
+}): Promise<UserSettings> {
+  const supabase = await createClient()
+  const saved = await saveUserSettings(supabase, settings)
+  revalidatePath('/dashboard')
+  revalidatePath('/profile')
+  return saved
 }

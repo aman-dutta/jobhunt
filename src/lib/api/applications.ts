@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Application, ApplicationInsert, ApplicationUpdate } from '@/lib/types/database.types'
+import { logActivity } from '@/lib/api/activities'
 
 async function verifyAuthenticationContext(supabase: SupabaseClient): Promise<string> {
   const {
@@ -109,6 +110,22 @@ export async function createApplication(
       throw new Error(`Failed to create application: ${error.message}`)
     }
 
+    if (data) {
+      void logActivity(supabase, {
+        user_id: userId,
+        application_id: data.id,
+        company_name: data.company_name,
+        job_title: data.job_title,
+        activity_type: 'created',
+        from_status: null,
+        to_status: data.status,
+        metadata: {
+          location: data.location,
+          salary_range: data.salary_range,
+        },
+      })
+    }
+
     return data
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
@@ -139,6 +156,19 @@ export async function updateApplication(
         console.error('Failed to update application:', error)
       }
       throw new Error(`Failed to update application: ${error.message}`)
+    }
+
+    if (data && updates.status) {
+      void logActivity(supabase, {
+        user_id: userId,
+        application_id: data.id,
+        company_name: data.company_name,
+        job_title: data.job_title,
+        activity_type: 'status_changed',
+        from_status: null,
+        to_status: updates.status,
+        metadata: {},
+      })
     }
 
     return data
@@ -216,12 +246,13 @@ export async function reorderApplicationsInColumn(
     const userId = await verifyAuthenticationContext(supabase)
 
     // Execute all updates in parallel
-    const updatePromises = updates.map(({ id, position }) =>
-      supabase
-        .from('applications')
-        .update({ position, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('user_id', userId) // Ensure user can only update their own applications
+    const updatePromises = updates.map(
+      ({ id, position }) =>
+        supabase
+          .from('applications')
+          .update({ position, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('user_id', userId) // Ensure user can only update their own applications
     )
 
     const results = await Promise.all(updatePromises)
@@ -277,6 +308,19 @@ export async function updateApplicationPosition(
         console.error('Failed to update application position:', error)
       }
       throw new Error(`Failed to update application position: ${error.message}`)
+    }
+
+    if (data && status) {
+      void logActivity(supabase, {
+        user_id: userId,
+        application_id: data.id,
+        company_name: data.company_name,
+        job_title: data.job_title,
+        activity_type: 'status_changed',
+        from_status: null,
+        to_status: status,
+        metadata: { position },
+      })
     }
 
     return data

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { FileText, Building, FolderOpen } from 'lucide-react'
+import { FileText, Building, FolderOpen, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TabType } from '../../types'
 
@@ -24,16 +24,22 @@ const tabItems: Array<{
     description: 'Job description and details',
   },
   {
+    id: 'contacts',
+    label: 'Contacts & Outreach',
+    icon: Users,
+    description: 'HR, referrals & follow-up reminders',
+  },
+  {
+    id: 'documents',
+    label: 'Cover Letter & Docs',
+    icon: FolderOpen,
+    description: 'Tailored cover letter and files',
+  },
+  {
     id: 'company',
     label: 'Company',
     icon: Building,
     description: 'Company information and research',
-  },
-  {
-    id: 'documents',
-    label: 'Documents',
-    icon: FolderOpen,
-    description: 'Resume, cover letter, and attachments',
   },
 ]
 

@@ -61,6 +61,10 @@ export const applicationFormSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal('')),
+
+  job_description: z.string().optional().nullable().or(z.literal('')),
+
+  cover_letter: z.string().optional().nullable().or(z.literal('')),
 })
 
 /**

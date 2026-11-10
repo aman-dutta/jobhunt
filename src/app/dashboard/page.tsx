@@ -25,11 +25,24 @@ import {
   deleteApplicationAction,
   updateApplicationStatusAction,
   getApplicationsAction,
+  getDueFollowUpsAction,
 } from './actions'
+import { getApplications } from '@/lib/api/applications'
+import { BellRing, ChevronRight } from 'lucide-react'
 
 export default function DashboardPage() {
   const [applications, setApplications] = React.useState<Application[]>([])
   const [filteredApplications, setFilteredApplications] = React.useState<Application[]>([])
+  const [dueFollowUps, setDueFollowUps] = React.useState<
+    Array<{
+      id: string
+      application_id: string
+      name: string
+      role: string | null
+      follow_up_date: string | null
+      applications?: { company_name: string; job_title: string }
+    }>
+  >([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [searchQuery, setSearchQuery] = React.useState('')
@@ -68,13 +81,28 @@ export default function DashboardPage() {
         // Set user information
         setUser(currentUser)
 
-        // Load applications
-        const apps = await getApplicationsAction()
+        // Load applications (try server action first, fallback to browser client)
+        let apps: Application[] = []
+        try {
+          apps = await getApplicationsAction()
+        } catch (actionErr) {
+          console.warn('Server action failed, loading via browser client:', actionErr)
+          apps = await getApplications(supabase)
+        }
         setApplications(apps)
         setFilteredApplications(apps)
+
+        // Load due circle-back follow-ups
+        try {
+          const followUps = await getDueFollowUpsAction()
+          setDueFollowUps(followUps || [])
+        } catch (fErr) {
+          console.warn('Could not fetch due follow ups:', fErr)
+        }
       } catch (err) {
         console.error('Failed to load data:', err)
-        setError('Failed to load applications. Please try again.')
+        const errMsg = err instanceof Error ? err.message : ''
+        setError(`Failed to load applications. Please try again.${errMsg ? ` (${errMsg})` : ''}`)
       } finally {
         setIsLoading(false)
       }
@@ -259,6 +287,44 @@ export default function DashboardPage() {
             </div>
           ) : applications.length > 0 ? (
             <>
+              {/* Circle-Back Reminders Alert */}
+              {dueFollowUps.length > 0 && (
+                <div className="mb-4 p-4 rounded-glass glass-light border border-amber-500/40 bg-amber-500/[0.05] shadow-glass-subtle space-y-2">
+                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
+                    <BellRing className="w-4 h-4 animate-bounce" />
+                    <span>Circle-Back Reminders ({dueFollowUps.length} Pending)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                    {dueFollowUps.map(fu => {
+                      const app = applications.find(a => a.id === fu.application_id)
+                      return (
+                        <button
+                          key={fu.id}
+                          type="button"
+                          onClick={() => {
+                            if (app) setSelectedApplication(app)
+                          }}
+                          className="flex items-center justify-between p-2.5 rounded-glass-sm glass-ultra hover:glass-light text-left transition-all border border-amber-500/20 group"
+                        >
+                          <div className="truncate pr-2">
+                            <p className="text-xs font-semibold text-label-primary truncate">
+                              {fu.name}{' '}
+                              <span className="text-label-tertiary font-normal">
+                                ({fu.role || 'HR / Recruiter'})
+                              </span>
+                            </p>
+                            <p className="text-[11px] text-label-secondary truncate">
+                              at {fu.applications?.company_name || app?.company_name || 'Company'}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-amber-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Kanban Board (Detailed View) */}
               <KanbanBoardV3
                 applications={filteredApplications}
